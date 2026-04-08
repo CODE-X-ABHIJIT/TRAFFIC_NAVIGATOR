@@ -4,7 +4,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { JunctionStatus } from '../models/junction.model';
 import { Alert } from '../models/alert.model';
 import { IncidentResponse } from '../models/incident.model';
-import { environment } from '../../environments/environment';
+import { environment } from '../../environments/environment.prod';
 
 @Injectable({ providedIn: 'root' })
 export class WebSocketService implements OnDestroy {
