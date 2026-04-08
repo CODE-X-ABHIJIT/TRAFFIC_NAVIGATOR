@@ -1,0 +1,41 @@
+<aside class="fixed left-0 top-0 h-full bg-slate-950 border-r border-slate-800 flex flex-col transition-all duration-300 z-40"
+       [class.w-64]="!collapsed" [class.w-20]="collapsed">
+
+  <!-- Logo -->
+  <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-800">
+    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+      <i class="fas fa-traffic-light text-white text-lg"></i>
+    </div>
+    @if (!collapsed) {
+      <div>
+        <h1 class="font-bold text-lg text-white leading-none">TCCS</h1>
+        <p class="text-[10px] text-slate-500 uppercase tracking-widest">Command Center</p>
+      </div>
+    }
+  </div>
+
+  <!-- Nav -->
+  <nav class="flex-1 py-4 px-3 space-y-1">
+    @for (item of navItems; track item.route) {
+      <a [routerLink]="item.route"
+         routerLinkActive="bg-blue-600/20 text-blue-400 border-blue-500"
+         [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400
+                hover:text-white hover:bg-slate-800 transition-all duration-200
+                border border-transparent group"
+         [class.justify-center]="collapsed">
+        <i class="fas {{ item.icon }} w-5 text-center text-sm group-hover:scale-110 transition-transform"></i>
+        @if (!collapsed) { <span class="text-sm font-medium">{{ item.label }}</span> }
+      </a>
+    }
+  </nav>
+
+  <!-- Collapse -->
+  <div class="p-3 border-t border-slate-800">
+    <button (click)="toggle.emit()"
+            class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-all">
+      <i class="fas" [class.fa-chevron-left]="!collapsed" [class.fa-chevron-right]="collapsed"></i>
+      @if (!collapsed) { <span class="text-xs">Collapse</span> }
+    </button>
+  </div>
+</aside>

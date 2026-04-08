@@ -1,0 +1,46 @@
+<header class="h-16 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 sticky top-0 z-30">
+  <div class="flex items-center gap-4">
+    <button (click)="toggleSidebar.emit()" class="text-slate-400 hover:text-white transition-colors">
+      <i class="fas fa-bars text-lg"></i>
+    </button>
+    <div class="hidden sm:block">
+      <h2 class="text-sm font-semibold text-white">Traffic Command & Control System</h2>
+      <p class="text-[11px] text-slate-500">Smart City Control Room</p>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-6">
+    <!-- Connection Status -->
+    <div class="flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full" [class.bg-emerald-400]="wsConnected" [class.bg-red-400]="!wsConnected" [class.animate-pulse]="wsConnected"></div>
+      <span class="text-xs font-medium" [class.text-emerald-400]="wsConnected" [class.text-red-400]="!wsConnected">
+        {{ wsConnected ? 'LIVE' : 'OFFLINE' }}
+      </span>
+    </div>
+
+    <!-- Weather -->
+    @if (weather) {
+      <div class="hidden md:flex items-center gap-2 text-slate-400">
+        <i class="fas {{ getWeatherIcon() }}"></i>
+        <span class="text-xs font-mono">{{ weather.temperature | number:'1.0-0' }}°C</span>
+        @if (weather.hazardous) { <span class="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded text-[10px] font-bold">HAZARD</span> }
+      </div>
+    }
+
+    <!-- Alert Bell -->
+    <a routerLink="/alerts" class="relative text-slate-400 hover:text-white transition-colors cursor-pointer">
+      <i class="fas fa-bell text-lg"></i>
+      @if (alertCount > 0) {
+        <span class="absolute -top-1 -right-2 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold animate-pulse">
+          {{ alertCount > 99 ? '99+' : alertCount }}
+        </span>
+      }
+    </a>
+
+    <!-- Clock -->
+    <div class="text-right hidden lg:block">
+      <p class="text-sm font-mono text-white">{{ currentTime | date:'HH:mm:ss' }}</p>
+      <p class="text-[10px] text-slate-500 font-mono">{{ currentTime | date:'dd MMM yyyy' }}</p>
+    </div>
+  </div>
+</header>

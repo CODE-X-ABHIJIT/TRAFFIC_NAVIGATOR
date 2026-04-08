@@ -1,0 +1,2 @@
+spring.application.name=smart-traffic-management
+server.port=9090

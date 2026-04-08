@@ -1,0 +1,5 @@
+package com.tccs.model.dto;
+
+public class DashboardSummaryDTO {
+
+}

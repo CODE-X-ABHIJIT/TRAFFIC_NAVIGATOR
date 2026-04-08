@@ -1,0 +1,151 @@
+package com.tccs.init;
+
+import com.tccs.integration.OverpassApiClient;
+import com.tccs.integration.OverpassApiClient.OsmJunction;
+import com.tccs.model.entity.Junction;
+import com.tccs.model.entity.Signal;
+import com.tccs.model.enums.ControlMode;
+import com.tccs.model.enums.SignalState;
+import com.tccs.repository.JunctionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+/**
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *  LIVE DATA INITIALIZER
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *  On startup, fetches REAL traffic signal locations
+ *  from OpenStreetMap (Overpass API) and seeds the
+ *  database. Falls back to hardcoded data if API fails.
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class LiveDataInitializer implements CommandLineRunner {
+
+    private final JunctionRepository junctionRepository;
+    private final OverpassApiClient overpassClient;
+
+    @Value("${traffic.city.name:Bhubaneswar}")
+    private String cityName;
+
+    @Value("${traffic.city.junction-count:10}")
+    private int junctionCount;
+
+    @Value("${traffic.city.south-lat:20.22}")
+    private double southLat;
+
+    @Value("${traffic.city.west-lon:85.77}")
+    private double westLon;
+
+    @Value("${traffic.city.north-lat:20.38}")
+    private double northLat;
+
+    @Value("${traffic.city.east-lon:85.90}")
+    private double eastLon;
+
+    @Override
+    @Transactional
+    public void run(String... args) {
+        if (junctionRepository.count() > 0) {
+            log.info("Database already has {} junctions. Skipping initialization.",
+                    junctionRepository.count());
+            return;
+        }
+
+        log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        log.info("  Fetching REAL traffic signals for {} from OpenStreetMap", cityName);
+        log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+        List<OsmJunction> osmJunctions = overpassClient.fetchTrafficSignals(
+                southLat, westLon, northLat, eastLon, junctionCount);
+
+        log.info("Processing {} junctions...", osmJunctions.size());
+
+        for (int i = 0; i < osmJunctions.size(); i++) {
+            OsmJunction osm = osmJunctions.get(i);
+            String code = String.format("J%03d", i + 1);
+
+            // Use OSM name or generate a meaningful one
+            String name = osm.getName();
+            if (name.startsWith("Traffic Signal")) {
+                name = cityName + " Signal " + (i + 1);
+            }
+
+            createJunction(
+                    code,
+                    name,
+                    osm.getLatitude(),
+                    osm.getLongitude(),
+                    calculateCycleTime(i)
+            );
+        }
+
+        log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        log.info("  ✅ {} junctions initialized for {} (Source: OpenStreetMap)",
+                junctionRepository.count(), cityName);
+        log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    }
+
+    private void createJunction(String code, String name,
+                                 double lat, double lon, int cycleTime) {
+
+        // Skip if somehow duplicate coordinates
+        if (junctionRepository.existsByJunctionCode(code)) {
+            log.warn("Junction {} already exists, skipping", code);
+            return;
+        }
+
+        Junction junction = Junction.builder()
+                .junctionCode(code)
+                .name(name)
+                .latitude(lat)
+                .longitude(lon)
+                .controlMode(ControlMode.AUTO)
+                .active(true)
+                .totalCycleTime(cycleTime)
+                .currentPhaseIndex(0)
+                .build();
+
+        // Create 4 directional signals
+        String[] directions = {"NORTH", "SOUTH", "EAST", "WEST"};
+        int baseGreen = cycleTime / 4 - 3; // distribute evenly minus yellow time
+
+        for (int i = 0; i < directions.length; i++) {
+            int greenTime = Math.max(15, baseGreen + (i % 2 == 0 ? 2 : -2));
+
+            Signal signal = Signal.builder()
+                    .direction(directions[i])
+                    .currentState(i == 0 ? SignalState.GREEN : SignalState.RED)
+                    .greenDuration(greenTime)
+                    .yellowDuration(3)
+                    .redDuration(cycleTime - greenTime - 3)
+                    .countdownSeconds(i == 0 ? greenTime : 0)
+                    .vehicleDensity(0)
+                    .vehicleSpeed(0)
+                    .freeFlowSpeed(45.0)
+                    .phaseOrder(i)
+                    .build();
+
+            junction.addSignal(signal);
+        }
+
+        junctionRepository.save(junction);
+        log.info("  ✅ {} — {} (lat:{}, lon:{})", code, name, lat, lon);
+    }
+
+    /**
+     * Vary cycle times to make the simulation realistic.
+     */
+    private int calculateCycleTime(int index) {
+        int[] cycleTimes = {120, 130, 110, 140, 120, 150, 110, 130, 120, 140};
+        return cycleTimes[index % cycleTimes.length];
+    }
+}

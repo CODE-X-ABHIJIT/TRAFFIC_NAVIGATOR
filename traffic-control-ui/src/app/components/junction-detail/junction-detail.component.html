@@ -1,0 +1,123 @@
+<a routerLink="/dashboard" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4">
+  <i class="fas fa-arrow-left"></i> Back to Dashboard
+</a>
+
+@if (loading) {
+  <div class="flex items-center justify-center h-[60vh]"><i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i></div>
+} @else if (junction) {
+
+<!-- Header Card -->
+<div class="card mb-6">
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold text-white">{{ junction.name }}</h1>
+        <app-congestion-badge [label]="junction.congestionLabel"></app-congestion-badge>
+      </div>
+      <p class="text-sm text-slate-400 mt-1">{{ junction.junctionCode }} · Lat: {{ junction.latitude | number:'1.4-4' }}, Lng: {{ junction.longitude | number:'1.4-4' }}</p>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+      <!-- Mode Toggle -->
+      <div class="flex items-center gap-2 bg-slate-900 rounded-lg px-4 py-2">
+        <span class="text-xs text-slate-400">Mode:</span>
+        <button (click)="toggleMode()" class="relative w-14 h-7 rounded-full transition-colors duration-300"
+                [class.bg-blue-600]="junction.controlMode==='AUTO'" [class.bg-amber-600]="junction.controlMode==='MANUAL'">
+          <span class="absolute top-0.5 w-6 h-6 bg-white rounded-full transition-transform duration-300 shadow"
+                [class.left-0.5]="junction.controlMode==='MANUAL'" [class.left-7]="junction.controlMode==='AUTO'"></span>
+        </button>
+        <span class="text-xs font-bold" [class.text-blue-400]="junction.controlMode==='AUTO'" [class.text-amber-400]="junction.controlMode==='MANUAL'">{{ junction.controlMode }}</span>
+      </div>
+      <button (click)="triggerOptimize()" class="btn-primary"><i class="fas fa-wand-magic-sparkles mr-1.5"></i>Optimize</button>
+      <div class="bg-slate-900 rounded-lg px-4 py-2 text-center">
+        <p class="text-[10px] text-slate-500 uppercase">Cycle</p>
+        <p class="text-lg font-mono font-bold text-white">{{ junction.totalCycleTime }}s</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-700">
+    <div class="text-center"><p class="text-2xl font-mono font-bold text-white">{{ junction.totalVehicles }}</p><p class="text-xs text-slate-500">Total Vehicles</p></div>
+    <div class="text-center"><p class="text-2xl font-mono font-bold text-cyan-400">{{ junction.averageSpeed }} <span class="text-sm">km/h</span></p><p class="text-xs text-slate-500">Avg Speed</p></div>
+    <div class="text-center"><p class="text-2xl font-mono font-bold" [class.text-red-400]="junction.congestionLevel>0.5" [class.text-emerald-400]="junction.congestionLevel<=0.5">{{ (junction.congestionLevel*100).toFixed(0) }}%</p><p class="text-xs text-slate-500">Congestion</p></div>
+    <div class="text-center"><p class="text-2xl font-mono font-bold text-blue-400">{{ junction.currentPhaseIndex }}</p><p class="text-xs text-slate-500">Current Phase</p></div>
+  </div>
+</div>
+
+<!-- Signal Lights -->
+<div class="card mb-6">
+  <div class="card-header flex items-center gap-2"><i class="fas fa-traffic-light text-emerald-400"></i>Live Signal Status</div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    @for (sig of junction.signals; track sig.signalId) {
+      <app-signal-light [signal]="sig"></app-signal-light>
+    }
+  </div>
+</div>
+
+<!-- Control Panels -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Override Panel -->
+  <div class="card">
+    <div class="card-header flex items-center gap-2"><i class="fas fa-sliders text-blue-400"></i>Manual Signal Override</div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Direction</label>
+        <select [(ngModel)]="overrideDirection" class="select-dark">
+          <option value="">Select Direction</option>
+          @for (sig of junction.signals; track sig.signalId) { <option [value]="sig.direction">{{ sig.direction }}</option> }
+          <option value="ALL">ALL (All directions)</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Signal State</label>
+        <div class="flex gap-2">
+          <button (click)="overrideState='GREEN'" class="flex-1 py-2.5 rounded-lg font-medium text-sm transition-all"
+                  [class.bg-emerald-600]="overrideState==='GREEN'" [class.text-white]="overrideState==='GREEN'" [class.bg-slate-700]="overrideState!=='GREEN'" [class.text-slate-400]="overrideState!=='GREEN'">🟢 GREEN</button>
+          <button (click)="overrideState='RED'" class="flex-1 py-2.5 rounded-lg font-medium text-sm transition-all"
+                  [class.bg-red-600]="overrideState==='RED'" [class.text-white]="overrideState==='RED'" [class.bg-slate-700]="overrideState!=='RED'" [class.text-slate-400]="overrideState!=='RED'">🔴 RED</button>
+          <button (click)="overrideState='YELLOW'" class="flex-1 py-2.5 rounded-lg font-medium text-sm transition-all"
+                  [class.bg-amber-600]="overrideState==='YELLOW'" [class.text-white]="overrideState==='YELLOW'" [class.bg-slate-700]="overrideState!=='YELLOW'" [class.text-slate-400]="overrideState!=='YELLOW'">🟡 YELLOW</button>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Duration: {{ overrideDuration }}s</label>
+        <input type="range" [(ngModel)]="overrideDuration" min="10" max="120" step="5" class="w-full accent-blue-500">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Reason</label>
+        <input type="text" [(ngModel)]="overrideReason" placeholder="e.g. Ambulance approaching..." class="input-dark">
+      </div>
+      <button (click)="submitOverride()" class="btn-primary w-full"><i class="fas fa-paper-plane mr-2"></i>Apply Override</button>
+    </div>
+  </div>
+
+  <!-- Emergency Panel -->
+  <div class="card border-red-500/30">
+    <div class="card-header flex items-center gap-2"><i class="fas fa-bolt text-red-400"></i>Emergency Clearance</div>
+    <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4">
+      <p class="text-xs text-red-400"><i class="fas fa-triangle-exclamation mr-1"></i>Sets ALL signals RED except selected direction. Use for emergencies only.</p>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Clear Direction</label>
+        <select [(ngModel)]="emergencyDirection" class="select-dark">
+          <option value="">Select Direction</option>
+          @for (sig of junction.signals; track sig.signalId) { <option [value]="sig.direction">{{ sig.direction }}</option> }
+        </select>
+      </div>
+      <button (click)="submitEmergency()" class="btn-danger w-full"><i class="fas fa-bolt mr-2"></i>ACTIVATE EMERGENCY CLEARANCE</button>
+    </div>
+    <div class="mt-6 pt-4 border-t border-slate-700">
+      <p class="text-xs text-slate-400 mb-3 font-semibold uppercase">Quick Actions</p>
+      <div class="grid grid-cols-2 gap-2">
+        @for (sig of junction.signals; track sig.signalId) {
+          <button (click)="emergencyDirection=sig.direction; submitEmergency()"
+                  class="bg-slate-700 hover:bg-red-600/50 text-slate-300 hover:text-white py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5">
+            <i class="fas fa-arrow-right text-[10px]"></i>Clear {{ sig.direction }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+}

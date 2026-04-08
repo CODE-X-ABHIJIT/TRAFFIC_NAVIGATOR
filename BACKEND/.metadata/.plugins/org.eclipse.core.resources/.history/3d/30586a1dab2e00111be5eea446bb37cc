@@ -1,0 +1,159 @@
+package com.tccs.integration;
+
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Component
+@Slf4j
+public class OverpassApiClient {
+
+    private static final String OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+    private final RestTemplate restTemplate;
+
+    public OverpassApiClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    public List<OsmJunction> fetchTrafficSignals(
+            double south, double west, double north, double east, int limit) {
+
+        List<OsmJunction> junctions = new ArrayList<>();
+
+        try {
+            // Build Overpass QL query
+            String query = "[out:json][timeout:25];" +
+                    "node[\"highway\"=\"traffic_signals\"](" +
+                    south + "," + west + "," + north + "," + east + ");" +
+                    "out body " + limit + ";";
+
+            log.info("Fetching traffic signals from Overpass API...");
+            log.debug("Query: {}", query);
+
+            // Use POST with form data (avoids URL encoding issues)
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            formData.add("data", query);
+
+            HttpEntity<MultiValueMap<String, String>> request =
+                    new HttpEntity<>(formData, headers);
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.postForObject(
+                    OVERPASS_URL, request, Map.class);
+
+            if (response != null && response.containsKey("elements")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> elements =
+                        (List<Map<String, Object>>) response.get("elements");
+
+                int count = 0;
+                for (Map<String, Object> element : elements) {
+                    if (count >= limit) break;
+
+                    double lat = toDouble(element.get("lat"));
+                    double lon = toDouble(element.get("lon"));
+                    long osmId = toLong(element.get("id"));
+                    String name = extractName(element, count + 1);
+
+                    OsmJunction junction = new OsmJunction();
+                    junction.setOsmId(osmId);
+                    junction.setName(name);
+                    junction.setLatitude(lat);
+                    junction.setLongitude(lon);
+
+                    junctions.add(junction);
+                    count++;
+                }
+
+                log.info("✅ Fetched {} traffic signal junctions from OpenStreetMap",
+                        junctions.size());
+            }
+
+        } catch (Exception e) {
+            log.error("❌ Failed to fetch from Overpass API: {}", e.getMessage());
+            log.info("Falling back to hardcoded Bhubaneswar junctions...");
+            junctions = getFallbackJunctions();
+        }
+
+        if (junctions.isEmpty()) {
+            log.warn("No junctions fetched. Using fallback data.");
+            junctions = getFallbackJunctions();
+        }
+
+        return junctions;
+    }
+
+    public List<OsmJunction> fetchBhubaneswarJunctions(int limit) {
+        return fetchTrafficSignals(20.22, 85.77, 20.38, 85.90, limit);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractName(Map<String, Object> element, int index) {
+        if (element.containsKey("tags")) {
+            Map<String, Object> tags = (Map<String, Object>) element.get("tags");
+            if (tags.containsKey("name")) return (String) tags.get("name");
+            if (tags.containsKey("name:en")) return (String) tags.get("name:en");
+            if (tags.containsKey("junction")) return (String) tags.get("junction");
+            if (tags.containsKey("ref")) return "Junction " + tags.get("ref");
+            if (tags.containsKey("description")) return (String) tags.get("description");
+        }
+        return "Traffic Signal " + index;
+    }
+
+    private List<OsmJunction> getFallbackJunctions() {
+        List<OsmJunction> fallback = new ArrayList<>();
+        addFallback(fallback, 1, "Vani Vihar Square", 20.2961, 85.8245);
+        addFallback(fallback, 2, "Jaydev Vihar Square", 20.2912, 85.8177);
+        addFallback(fallback, 3, "Acharya Vihar Square", 20.2963, 85.8135);
+        addFallback(fallback, 4, "Rasulgarh Square", 20.2845, 85.8563);
+        addFallback(fallback, 5, "Kalpana Square", 20.2726, 85.8394);
+        addFallback(fallback, 6, "Ram Mandir Square", 20.2675, 85.8440);
+        addFallback(fallback, 7, "Master Canteen Square", 20.2634, 85.8397);
+        addFallback(fallback, 8, "Sishu Bhawan Square", 20.2720, 85.8302);
+        addFallback(fallback, 9, "Nalco Square", 20.3002, 85.8188);
+        addFallback(fallback, 10, "Patia Square", 20.3541, 85.8190);
+        log.info("Using {} fallback Bhubaneswar junctions", fallback.size());
+        return fallback;
+    }
+
+    private void addFallback(List<OsmJunction> list, int id, String name,
+                              double lat, double lon) {
+        OsmJunction j = new OsmJunction();
+        j.setOsmId(id);
+        j.setName(name);
+        j.setLatitude(lat);
+        j.setLongitude(lon);
+        list.add(j);
+    }
+
+    private double toDouble(Object val) {
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        return 0.0;
+    }
+
+    private long toLong(Object val) {
+        if (val instanceof Number) return ((Number) val).longValue();
+        return 0;
+    }
+
+    @Data
+    public static class OsmJunction {
+        private long osmId;
+        private String name;
+        private double latitude;
+        private double longitude;
+    }
+}

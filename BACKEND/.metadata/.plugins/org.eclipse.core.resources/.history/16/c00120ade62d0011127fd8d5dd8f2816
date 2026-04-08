@@ -1,0 +1,5 @@
+package com.tccs.repository;
+
+public class SignalRepository {
+
+}

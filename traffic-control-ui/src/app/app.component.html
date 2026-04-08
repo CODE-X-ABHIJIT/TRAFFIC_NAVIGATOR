@@ -1,0 +1,32 @@
+<div class="flex h-screen overflow-hidden bg-slate-900">
+  <app-sidebar [collapsed]="sidebarCollapsed" (toggle)="toggleSidebar()"></app-sidebar>
+
+  <div class="flex-1 flex flex-col overflow-hidden transition-all duration-300"
+       [class.ml-64]="!sidebarCollapsed" [class.ml-20]="sidebarCollapsed">
+    <app-header (toggleSidebar)="toggleSidebar()"></app-header>
+    <main class="flex-1 overflow-y-auto p-6 bg-slate-900">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+    @for (toast of toasts; track toast.id) {
+      <div class="p-4 rounded-lg border-l-4 shadow-2xl backdrop-blur-sm animate-slide-in"
+           [ngClass]="getToastColor(toast.type)">
+        <div class="flex items-start gap-3">
+          <i class="fas {{ getToastIcon(toast.type) }} mt-0.5"></i>
+          <div class="flex-1">
+            <p class="font-semibold text-sm">{{ toast.title }}</p>
+            @if (toast.message) {
+              <p class="text-xs text-slate-400 mt-1">{{ toast.message }}</p>
+            }
+          </div>
+          <button (click)="removeToast(toast.id)" class="text-slate-500 hover:text-slate-300">
+            <i class="fas fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,37 @@
+.signal-card {
+  @apply bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-slate-600 transition-all duration-300;
+}
+.signal-card.compact { @apply p-3; }
+
+.light-housing {
+  @apply w-14 bg-slate-900 rounded-xl p-2 space-y-2 border border-slate-700 shadow-inner;
+}
+
+.light {
+  @apply w-10 h-10 rounded-full mx-auto transition-all duration-500;
+}
+
+.light.red { background: #3f1111; }
+.light.yellow { background: #3f3511; }
+.light.green { background: #113f18; }
+
+.light.red.active {
+  background: #ef4444;
+  box-shadow: 0 0 15px #ef4444, 0 0 30px #ef444466;
+  animation: pulse-light 1.5s ease-in-out infinite;
+}
+.light.yellow.active {
+  background: #eab308;
+  box-shadow: 0 0 15px #eab308, 0 0 30px #eab30866;
+  animation: pulse-light 0.8s ease-in-out infinite;
+}
+.light.green.active {
+  background: #22c55e;
+  box-shadow: 0 0 15px #22c55e, 0 0 30px #22c55e66;
+  animation: pulse-light 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-light {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}

@@ -1,0 +1,145 @@
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-white">
+      <i class="fas fa-car-burst text-red-400 mr-2"></i>Incident Management
+    </h1>
+    <p class="text-sm text-slate-400 mt-1">
+      {{ incidents.length }} active incidents · Auto emergency handling enabled
+    </p>
+  </div>
+  <button (click)="showForm=!showForm" class="btn-danger">
+    <i class="fas fa-plus mr-1.5"></i>Report Incident
+  </button>
+</div>
+
+<!-- Auto Response Info Banner -->
+<div class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-6 flex items-center gap-3">
+  <i class="fas fa-robot text-blue-400 text-lg"></i>
+  <div>
+    <p class="text-sm text-blue-300 font-semibold">Auto Emergency Response Active</p>
+    <p class="text-xs text-slate-400">
+      When you report an incident, the system automatically clears nearby junctions, activates emergency signals, and reverts after timeout.
+    </p>
+  </div>
+</div>
+
+@if (showForm) {
+  <div class="card mb-6 border-red-500/30">
+    <h3 class="text-sm font-semibold text-white mb-4">
+      <i class="fas fa-file-pen text-red-400 mr-2"></i>Report New Incident
+      <span class="text-xs text-slate-400 font-normal ml-2">→ Auto emergency will trigger</span>
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Incident Type *</label>
+        <select [(ngModel)]="form.incidentType" class="select-dark">
+          @for (t of incidentTypes; track t) {
+            <option [value]="t">{{ t.replace('_',' ') }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Junction Code (optional)</label>
+        <input type="text" [(ngModel)]="form.junctionCode" placeholder="e.g. J001" class="input-dark">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Latitude *</label>
+        <input type="number" [(ngModel)]="form.latitude" step="0.0001" class="input-dark">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Longitude *</label>
+        <input type="number" [(ngModel)]="form.longitude" step="0.0001" class="input-dark">
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Severity</label>
+        <select [(ngModel)]="form.severity" class="select-dark">
+          @for (s of severities; track s) {
+            <option [value]="s">{{ s }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 mb-1 block">Reported By</label>
+        <input type="text" [(ngModel)]="form.reportedBy" placeholder="Officer name" class="input-dark">
+      </div>
+      <div class="md:col-span-2">
+        <label class="text-xs text-slate-400 mb-1 block">Description</label>
+        <textarea [(ngModel)]="form.description" rows="2" placeholder="Describe the incident..." class="input-dark resize-none"></textarea>
+      </div>
+    </div>
+    <div class="flex justify-between items-center mt-4">
+      <p class="text-xs text-amber-400">
+        <i class="fas fa-bolt mr-1"></i>
+        Auto emergency clearance will activate on submit
+      </p>
+      <div class="flex gap-3">
+        <button (click)="showForm=false;resetForm()" class="btn-ghost">Cancel</button>
+        <button (click)="submitIncident()" class="btn-danger" [disabled]="submitting">
+          @if (submitting) {
+            <i class="fas fa-spinner fa-spin mr-1.5"></i>Processing...
+          } @else {
+            <i class="fas fa-paper-plane mr-1.5"></i>Report & Activate Emergency
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (loading) {
+  <div class="text-center py-20">
+    <i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i>
+  </div>
+} @else if (incidents.length === 0) {
+  <div class="card text-center py-16">
+    <i class="fas fa-shield-check text-5xl text-emerald-500/50 mb-4"></i>
+    <p class="text-lg text-slate-400">No active incidents</p>
+    <p class="text-sm text-slate-500 mt-1">All clear — no emergencies</p>
+  </div>
+} @else {
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    @for (inc of incidents; track inc.id) {
+      <div class="card hover:border-slate-600 transition-all">
+        <div class="flex items-start justify-between">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-lg bg-slate-900 flex items-center justify-center">
+              <i class="fas {{ getTypeIcon(inc.incidentType) }}"></i>
+            </div>
+            <div>
+              <h4 class="font-semibold text-white text-sm">
+                {{ inc.incidentType.replace('_',' ') }}
+              </h4>
+              <p class="text-xs text-slate-400 mt-0.5">
+                {{ inc.description || 'No description' }}
+              </p>
+            </div>
+          </div>
+          <span class="text-xs font-bold" [ngClass]="getSeverityColor(inc.severity)">
+            {{ inc.severity }}
+          </span>
+        </div>
+
+        <!-- Auto Response Badge -->
+        <div class="mt-3 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center gap-2">
+          <i class="fas fa-robot text-red-400 text-sm animate-pulse"></i>
+          <span class="text-xs text-red-300 font-medium">
+            🚨 Auto Emergency Active — Nearby signals cleared
+          </span>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-700 flex items-center justify-between text-xs text-slate-500">
+          <div class="flex items-center gap-3">
+            @if (inc.junctionCode) {
+              <span><i class="fas fa-location-dot mr-1"></i>{{ inc.junctionCode }}</span>
+            }
+            <span><i class="fas fa-user mr-1"></i>{{ inc.reportedBy || 'System' }}</span>
+            <span><i class="fas fa-clock mr-1"></i>{{ inc.reportedAt | date:'HH:mm' }}</span>
+          </div>
+          <button (click)="resolveIncident(inc.id)" class="btn-success text-xs py-1">
+            <i class="fas fa-check mr-1"></i>Resolve & Revert
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+}

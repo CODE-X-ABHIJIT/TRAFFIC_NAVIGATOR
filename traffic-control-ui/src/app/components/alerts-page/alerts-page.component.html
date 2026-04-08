@@ -1,0 +1,46 @@
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-white"><i class="fas fa-bell text-amber-400 mr-2"></i>Alert Center</h1>
+    <p class="text-sm text-slate-400 mt-1">{{ alerts.length }} alerts</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <div class="flex bg-slate-800 rounded-lg p-1">
+      <button (click)="setFilter('unacknowledged')" class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              [class.bg-blue-600]="filter==='unacknowledged'" [class.text-white]="filter==='unacknowledged'" [class.text-slate-400]="filter!=='unacknowledged'">Unacknowledged</button>
+      <button (click)="setFilter('all')" class="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              [class.bg-blue-600]="filter==='all'" [class.text-white]="filter==='all'" [class.text-slate-400]="filter!=='all'">All Recent</button>
+    </div>
+    <button (click)="acknowledgeAll()" class="btn-success"><i class="fas fa-check-double mr-1.5"></i>Ack All</button>
+  </div>
+</div>
+
+@if (loading) {
+  <div class="text-center py-20"><i class="fas fa-spinner fa-spin text-3xl text-blue-500"></i></div>
+} @else if (alerts.length === 0) {
+  <div class="card text-center py-16">
+    <i class="fas fa-check-circle text-5xl text-emerald-500/50 mb-4"></i>
+    <p class="text-lg text-slate-400">No alerts</p>
+  </div>
+} @else {
+  <div class="space-y-2">
+    @for (alert of alerts; track alert.id) {
+      <div class="card border-l-4 flex items-center gap-4 py-3 hover:bg-slate-700/30 transition-colors"
+           [ngClass]="getSeverityClass(alert.severity)" [class.opacity-50]="alert.acknowledged">
+        <i class="fas {{ getTypeIcon(alert.alertType) }} text-lg w-8 text-center"></i>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-slate-200">{{ alert.message }}</p>
+          <div class="flex items-center gap-3 mt-1.5">
+            <span class="text-[11px] font-mono text-slate-500"><i class="fas fa-clock mr-1"></i>{{ alert.createdAt | date:'dd MMM HH:mm:ss' }}</span>
+            @if (alert.junctionCode) { <span class="text-[11px] bg-slate-700 px-2 py-0.5 rounded text-slate-400">{{ alert.junctionCode }}</span> }
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold" [ngClass]="getSeverityBadge(alert.severity)">{{ alert.severity }}</span>
+          </div>
+        </div>
+        @if (!alert.acknowledged) {
+          <button (click)="acknowledge(alert.id)" class="btn-ghost text-xs"><i class="fas fa-check mr-1"></i>Ack</button>
+        } @else {
+          <span class="text-xs text-emerald-400"><i class="fas fa-check-circle"></i></span>
+        }
+      </div>
+    }
+  </div>
+}

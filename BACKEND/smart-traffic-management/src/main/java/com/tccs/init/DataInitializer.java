@@ -1,0 +1,112 @@
+//package com.tccs.init;
+//
+//import com.tccs.model.entity.Junction;
+//import com.tccs.model.entity.Signal;
+//import com.tccs.model.enums.ControlMode;
+//import com.tccs.model.enums.SignalState;
+//import com.tccs.repository.JunctionRepository;
+//import lombok.RequiredArgsConstructor;
+//import lombok.extern.slf4j.Slf4j;
+//import org.springframework.boot.CommandLineRunner;
+//import org.springframework.stereotype.Component;
+//import org.springframework.transaction.annotation.Transactional;
+//
+//@Component
+//@RequiredArgsConstructor
+//@Slf4j
+//public class DataInitializer implements CommandLineRunner {
+//
+//    private final JunctionRepository junctionRepository;
+//
+//    @Override
+//    @Transactional
+//    public void run(String... args) {
+//        if (junctionRepository.count() > 0) {
+//            log.info("Database already initialized. Skipping seed data.");
+//            return;
+//        }
+//
+//        log.info("━━━━ Initializing Bhubaneswar junction data ━━━━");
+//
+//        // ─── Junction 1: Vani Vihar Square ───
+//        createJunction("J001", "Vani Vihar Square",
+//                20.2961, 85.8245, 120);
+//
+//        // ─── Junction 2: Jaydev Vihar Square ───
+//        createJunction("J002", "Jaydev Vihar Square",
+//                20.2912, 85.8177, 150);
+//
+//        // ─── Junction 3: Acharya Vihar Square ───
+//        createJunction("J003", "Acharya Vihar Square",
+//                20.2963, 85.8135, 120);
+//
+//        // ─── Junction 4: Rasulgarh Square ───
+//        createJunction("J004", "Rasulgarh Square",
+//                20.2845, 85.8563, 130);
+//
+//        // ─── Junction 5: Kalpana Square ───
+//        createJunction("J005", "Kalpana Square",
+//                20.2726, 85.8394, 120);
+//
+//        // ─── Junction 6: Ram Mandir Square ───
+//        createJunction("J006", "Ram Mandir Square",
+//                20.2675, 85.8440, 110);
+//
+//        // ─── Junction 7: Master Canteen Square ───
+//        createJunction("J007", "Master Canteen Square",
+//                20.2634, 85.8397, 120);
+//
+//        // ─── Junction 8: Sishu Bhawan Square ───
+//        createJunction("J008", "Sishu Bhawan Square",
+//                20.2720, 85.8302, 110);
+//
+//        // ─── Junction 9: Nalco Square ───
+//        createJunction("J009", "Nalco Square",
+//                20.3002, 85.8188, 130);
+//
+//        // ─── Junction 10: Patia Square ───
+//        createJunction("J010", "Patia Square",
+//                20.3541, 85.8190, 120);
+//
+//        log.info("━━━━ {} junctions initialized with 4 signals each ━━━━",
+//                junctionRepository.count());
+//    }
+//
+//    private void createJunction(String code, String name,
+//                                 double lat, double lon, int cycleTime) {
+//
+//        Junction junction = Junction.builder()
+//                .junctionCode(code)
+//                .name(name)
+//                .latitude(lat)
+//                .longitude(lon)
+//                .controlMode(ControlMode.AUTO)
+//                .active(true)
+//                .totalCycleTime(cycleTime)
+//                .currentPhaseIndex(0)
+//                .build();
+//
+//        String[] directions = {"NORTH", "SOUTH", "EAST", "WEST"};
+//        int[] defaultGreens = {30, 30, 25, 25};
+//
+//        for (int i = 0; i < directions.length; i++) {
+//            Signal signal = Signal.builder()
+//                    .direction(directions[i])
+//                    .currentState(i == 0 ? SignalState.GREEN : SignalState.RED)
+//                    .greenDuration(defaultGreens[i])
+//                    .yellowDuration(3)
+//                    .redDuration(cycleTime - defaultGreens[i] - 3)
+//                    .countdownSeconds(i == 0 ? defaultGreens[i] : 0)
+//                    .vehicleDensity(0)
+//                    .vehicleSpeed(0)
+//                    .freeFlowSpeed(50.0)
+//                    .phaseOrder(i)
+//                    .build();
+//
+//            junction.addSignal(signal);
+//        }
+//
+//        junctionRepository.save(junction);
+//        log.info("  ✅ Created junction: {} — {}", code, name);
+//    }
+//}

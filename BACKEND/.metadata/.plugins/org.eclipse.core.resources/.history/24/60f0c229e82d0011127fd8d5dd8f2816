@@ -1,0 +1,5 @@
+package com.tccs.controller;
+
+public class AnalyticsController {
+
+}

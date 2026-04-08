@@ -1,0 +1,52 @@
+# ========================
+# SERVER
+# ========================
+server.port=8090
+spring.application.name=smart-traffic-management
+
+# ========================
+# H2 DATABASE (Dev Mode)
+# ========================
+spring.datasource.url=jdbc:h2:mem:trafficdb;DB_CLOSE_DELAY=-1
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# ========================
+# JPA / HIBERNATE
+# ========================
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+
+# ========================
+# EXTERNAL API KEYS
+# ========================
+traffic.tomtom.api-key=YOUR_TOMTOM_API_KEY
+traffic.tomtom.base-url=https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json
+
+traffic.openweather.api-key=YOUR_OPENWEATHER_API_KEY
+traffic.openweather.base-url=https://api.openweathermap.org/data/2.5/weather
+
+# ========================
+# SIMULATION (when no API keys)
+# ========================
+traffic.simulation.enabled=true
+traffic.data.refresh-interval-ms=30000
+
+# ========================
+# SIGNAL TIMING DEFAULTS
+# ========================
+traffic.signal.default-cycle-time=120
+traffic.signal.min-green-time=10
+traffic.signal.max-green-time=60
+traffic.signal.yellow-time=3
+
+# ========================
+# LOGGING
+# ========================
+logging.level.com.tccs=DEBUG
+logging.level.org.springframework.web.socket=INFO

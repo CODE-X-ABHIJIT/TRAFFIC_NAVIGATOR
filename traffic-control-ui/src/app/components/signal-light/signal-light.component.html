@@ -1,0 +1,45 @@
+@if (signal) {
+  <div class="signal-card" [class.compact]="compact">
+    <div class="text-center mb-2">
+      <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-700 text-slate-300">
+        <i class="fas {{ getDirectionIcon() }} text-[10px]"></i>
+        <span class="text-xs font-bold">{{ signal.direction }}</span>
+      </div>
+    </div>
+
+    <!-- Traffic Light Housing -->
+    <div class="light-housing mx-auto">
+      <div class="light red" [class.active]="isActive('RED')"></div>
+      <div class="light yellow" [class.active]="isActive('YELLOW')"></div>
+      <div class="light green" [class.active]="isActive('GREEN')"></div>
+    </div>
+
+    <!-- Countdown -->
+    <div class="text-center mt-3">
+      <p class="text-3xl font-mono font-bold"
+         [class.text-red-400]="isActive('RED')"
+         [class.text-amber-400]="isActive('YELLOW')"
+         [class.text-emerald-400]="isActive('GREEN')">
+        {{ signal.countdownSeconds }}s
+      </p>
+      <p class="text-[10px] text-slate-500 mt-0.5 uppercase">{{ signal.state }}</p>
+    </div>
+
+    @if (!compact) {
+      <div class="mt-3 pt-3 border-t border-slate-700 space-y-1.5">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500"><i class="fas fa-car mr-1"></i>Density</span>
+          <span class="font-mono text-slate-300">{{ signal.vehicleDensity }} veh</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500"><i class="fas fa-gauge mr-1"></i>Speed</span>
+          <span class="font-mono text-slate-300">{{ signal.vehicleSpeed | number:'1.0-1' }} km/h</span>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500"><i class="fas fa-clock mr-1"></i>Green</span>
+          <span class="font-mono text-slate-300">{{ signal.greenDuration }}s</span>
+        </div>
+      </div>
+    }
+  </div>
+}

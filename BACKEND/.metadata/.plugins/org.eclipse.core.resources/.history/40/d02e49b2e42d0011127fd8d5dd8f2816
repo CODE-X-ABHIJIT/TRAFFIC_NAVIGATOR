@@ -1,0 +1,5 @@
+package com.tccs.model.entity;
+
+public class Signal {
+
+}

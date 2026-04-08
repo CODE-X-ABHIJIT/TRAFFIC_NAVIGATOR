@@ -1,0 +1,5 @@
+package com.tccs.service;
+
+public class WeatherService {
+
+}

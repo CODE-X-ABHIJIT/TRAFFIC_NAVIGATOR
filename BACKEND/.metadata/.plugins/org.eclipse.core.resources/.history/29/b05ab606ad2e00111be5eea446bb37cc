@@ -1,0 +1,322 @@
+package com.tccs.integration;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Component
+@Slf4j
+public class OverpassApiClient {
+
+    private static final String[] OVERPASS_SERVERS = {
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+        "https://overpass-api.de/api/interpreter"
+    };
+
+    private final RestTemplate restTemplate;
+
+    public OverpassApiClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    /**
+     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     *  ALWAYS tries API first.
+     *  Maps API results to known junction names.
+     *  Falls back to curated if API fails.
+     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     */
+    public List<OsmJunction> fetchBhubaneswarJunctions(int limit) {
+
+        // STEP 1: Try Overpass API
+        List<OsmJunction> apiJunctions = fetchFromOverpass(
+                20.22, 85.77, 20.38, 85.90, limit + 30);
+
+        if (!apiJunctions.isEmpty()) {
+            log.info("✅ Overpass API returned {} traffic signals", apiJunctions.size());
+
+            // STEP 2: Map API junctions to known names
+            List<OsmJunction> namedJunctions = mapToKnownNames(apiJunctions, limit);
+            log.info("✅ Mapped {} junctions with proper names", namedJunctions.size());
+            return namedJunctions;
+        }
+
+        // STEP 3: API failed — use curated data
+        log.warn("⚠ All API servers failed. Using curated fallback data.");
+        List<OsmJunction> fallback = getCuratedJunctions();
+        return fallback.subList(0, Math.min(fallback.size(), limit));
+    }
+
+    /**
+     * General method for any bounding box
+     */
+    public List<OsmJunction> fetchTrafficSignals(
+            double south, double west, double north, double east, int limit) {
+
+        List<OsmJunction> junctions = fetchFromOverpass(south, west, north, east, limit);
+
+        if (junctions.isEmpty()) {
+            return getCuratedJunctions().subList(0,
+                    Math.min(getCuratedJunctions().size(), limit));
+        }
+
+        return junctions;
+    }
+
+    /**
+     * Fetch from Overpass API with retry across mirror servers
+     */
+    private List<OsmJunction> fetchFromOverpass(
+            double south, double west, double north, double east, int limit) {
+
+        List<OsmJunction> junctions = new ArrayList<>();
+
+        String query = "[out:json][timeout:10];" +
+                "node[\"highway\"=\"traffic_signals\"](" +
+                south + "," + west + "," + north + "," + east + ");" +
+                "out body " + limit + ";";
+
+        log.info("🌐 Calling Overpass API to fetch real traffic signals...");
+
+        for (String server : OVERPASS_SERVERS) {
+            try {
+                log.debug("  Trying: {}", server);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+                MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+                formData.add("data", query);
+
+                HttpEntity<MultiValueMap<String, String>> request =
+                        new HttpEntity<>(formData, headers);
+
+                @SuppressWarnings("unchecked")
+                Map<String, Object> response = restTemplate.postForObject(
+                        server, request, Map.class);
+
+                if (response != null && response.containsKey("elements")) {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> elements =
+                            (List<Map<String, Object>>) response.get("elements");
+
+                    for (Map<String, Object> element : elements) {
+                        OsmJunction junction = new OsmJunction();
+                        junction.setOsmId(toLong(element.get("id")));
+                        junction.setName(extractOsmName(element));
+                        junction.setLatitude(toDouble(element.get("lat")));
+                        junction.setLongitude(toDouble(element.get("lon")));
+                        junction.setSource("OVERPASS_API");
+                        junctions.add(junction);
+                    }
+
+                    if (!junctions.isEmpty()) {
+                        log.info("  ✅ Got {} signals from {}", junctions.size(), server);
+                        return junctions;
+                    }
+                }
+
+            } catch (Exception e) {
+                log.warn("  ❌ {} → {}", server, e.getMessage());
+            }
+        }
+
+        return junctions; // empty list
+    }
+
+    /**
+     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     *  Maps raw API junctions to nearest known names.
+     *  For each known junction, find closest API point.
+     * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     */
+    private List<OsmJunction> mapToKnownNames(
+            List<OsmJunction> apiJunctions, int limit) {
+
+        List<KnownJunction> knownPlaces = getKnownPlaces();
+        List<OsmJunction> result = new ArrayList<>();
+        List<OsmJunction> usedApiJunctions = new ArrayList<>();
+
+        // For each known place, find the closest API junction
+        for (KnownJunction known : knownPlaces) {
+            if (result.size() >= limit) break;
+
+            OsmJunction closest = null;
+            double minDist = Double.MAX_VALUE;
+
+            for (OsmJunction api : apiJunctions) {
+                if (usedApiJunctions.contains(api)) continue;
+
+                double dist = haversineDistance(
+                        known.lat, known.lon,
+                        api.getLatitude(), api.getLongitude());
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = api;
+                }
+            }
+
+            if (closest != null && minDist < 2.0) {
+                // Use API coordinates but with known name
+                OsmJunction named = new OsmJunction();
+                named.setOsmId(closest.getOsmId());
+                named.setName(known.name);
+                named.setLatitude(closest.getLatitude());
+                named.setLongitude(closest.getLongitude());
+                named.setSource("API_MATCHED");
+
+                result.add(named);
+                usedApiJunctions.add(closest);
+
+                log.debug("  Matched '{}' → API point ({}, {}) dist={:.2f}km",
+                        known.name, closest.getLatitude(),
+                        closest.getLongitude(), minDist);
+            } else {
+                // No nearby API point — use curated coordinates
+                OsmJunction curated = new OsmJunction();
+                curated.setOsmId(known.hashCode());
+                curated.setName(known.name);
+                curated.setLatitude(known.lat);
+                curated.setLongitude(known.lon);
+                curated.setSource("CURATED");
+                result.add(curated);
+            }
+        }
+
+        // If still need more, add remaining API junctions
+        if (result.size() < limit) {
+            int extra = 1;
+            for (OsmJunction api : apiJunctions) {
+                if (result.size() >= limit) break;
+                if (usedApiJunctions.contains(api)) continue;
+                if (isTooClose(api, result, 0.003)) continue;
+
+                String name = api.getName() != null && !api.getName().isEmpty()
+                        ? api.getName()
+                        : "Signal Point " + extra;
+                api.setName(name);
+                api.setSource("API_EXTRA");
+                result.add(api);
+                usedApiJunctions.add(api);
+                extra++;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Haversine distance between two coordinates in km
+     */
+    private double haversineDistance(double lat1, double lon1,
+                                     double lat2, double lon2) {
+        double R = 6371; // Earth radius in km
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    private boolean isTooClose(OsmJunction candidate,
+                                List<OsmJunction> existing, double threshold) {
+        for (OsmJunction j : existing) {
+            double dist = Math.abs(j.getLatitude() - candidate.getLatitude()) +
+                          Math.abs(j.getLongitude() - candidate.getLongitude());
+            if (dist < threshold) return true;
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractOsmName(Map<String, Object> element) {
+        if (element.containsKey("tags")) {
+            Map<String, Object> tags = (Map<String, Object>) element.get("tags");
+            if (tags.containsKey("name")) return (String) tags.get("name");
+            if (tags.containsKey("name:en")) return (String) tags.get("name:en");
+        }
+        return null;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    //  Known Bhubaneswar Junction Names + Approx Coords
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    private List<KnownJunction> getKnownPlaces() {
+        List<KnownJunction> list = new ArrayList<>();
+        list.add(new KnownJunction("Vani Vihar Square", 20.2961, 85.8245));
+        list.add(new KnownJunction("Jaydev Vihar Square", 20.2912, 85.8177));
+        list.add(new KnownJunction("Acharya Vihar Square", 20.2963, 85.8135));
+        list.add(new KnownJunction("Rasulgarh Square", 20.2845, 85.8563));
+        list.add(new KnownJunction("Kalpana Square", 20.2726, 85.8394));
+        list.add(new KnownJunction("Ram Mandir Square", 20.2675, 85.8440));
+        list.add(new KnownJunction("Master Canteen Square", 20.2634, 85.8397));
+        list.add(new KnownJunction("Sishu Bhawan Square", 20.2720, 85.8302));
+        list.add(new KnownJunction("Nalco Square", 20.3002, 85.8188));
+        list.add(new KnownJunction("Patia Square", 20.3541, 85.8190));
+        list.add(new KnownJunction("Damana Square", 20.3255, 85.8139));
+        list.add(new KnownJunction("Nandankanan Square", 20.3920, 85.8240));
+        list.add(new KnownJunction("Bomikhal Junction", 20.2816, 85.8256));
+        list.add(new KnownJunction("AG Square", 20.2573, 85.8393));
+        list.add(new KnownJunction("Rajmahal Square", 20.2528, 85.8384));
+        return list;
+    }
+
+    private List<OsmJunction> getCuratedJunctions() {
+        List<OsmJunction> list = new ArrayList<>();
+        for (KnownJunction k : getKnownPlaces()) {
+            OsmJunction j = new OsmJunction();
+            j.setOsmId(k.hashCode());
+            j.setName(k.name);
+            j.setLatitude(k.lat);
+            j.setLongitude(k.lon);
+            j.setSource("CURATED_FALLBACK");
+            list.add(j);
+        }
+        return list;
+    }
+
+    private double toDouble(Object val) {
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        return 0.0;
+    }
+
+    private long toLong(Object val) {
+        if (val instanceof Number) return ((Number) val).longValue();
+        return 0;
+    }
+
+    // ─── Inner Classes ───
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OsmJunction {
+        private long osmId;
+        private String name;
+        private double latitude;
+        private double longitude;
+        private String source; // API_MATCHED, API_EXTRA, CURATED, CURATED_FALLBACK
+    }
+
+    @AllArgsConstructor
+    private static class KnownJunction {
+        String name;
+        double lat;
+        double lon;
+    }
+}
