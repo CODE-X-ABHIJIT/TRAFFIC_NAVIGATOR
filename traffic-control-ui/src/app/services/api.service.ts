@@ -6,11 +6,11 @@ import { JunctionStatus, CongestionHeatmapPoint } from '../models/junction.model
 import { SignalOverrideRequest, ControlMode } from '../models/signal.model';
 import { Alert } from '../models/alert.model';
 import { IncidentRequest, IncidentResponse } from '../models/incident.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-
-  private base = 'http://localhost:8090/api';
+  private base = environment.apiBaseUrl;
 
   constructor(private http: HttpClient) {}
 

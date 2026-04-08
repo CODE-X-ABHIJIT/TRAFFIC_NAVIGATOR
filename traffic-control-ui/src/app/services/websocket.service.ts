@@ -4,6 +4,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { JunctionStatus } from '../models/junction.model';
 import { Alert } from '../models/alert.model';
 import { IncidentResponse } from '../models/incident.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class WebSocketService implements OnDestroy {
@@ -28,7 +29,7 @@ export class WebSocketService implements OnDestroy {
 
   connect(): void {
     this.client = new Client({
-      brokerURL: 'ws://localhost:8090/ws-traffic/websocket',
+      brokerURL: environment.wsBaseUrl,
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
