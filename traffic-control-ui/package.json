@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-"build": "ng build --configuration production && cp static.json dist/traffic-control-ui/",
+  "build": "ng build --configuration production && cp static.json dist/traffic-control-ui/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
