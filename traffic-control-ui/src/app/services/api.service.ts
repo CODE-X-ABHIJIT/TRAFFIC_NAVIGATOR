@@ -6,7 +6,7 @@ import { JunctionStatus, CongestionHeatmapPoint } from '../models/junction.model
 import { SignalOverrideRequest, ControlMode } from '../models/signal.model';
 import { Alert } from '../models/alert.model';
 import { IncidentRequest, IncidentResponse } from '../models/incident.model';
-import { environment } from '../../environments/environment';
+import { environment } from '../../environments/environment.prod';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
