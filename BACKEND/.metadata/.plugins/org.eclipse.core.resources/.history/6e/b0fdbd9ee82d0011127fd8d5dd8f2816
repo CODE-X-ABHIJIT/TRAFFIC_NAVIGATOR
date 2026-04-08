@@ -1,5 +1,0 @@
-package com.tccs.exception;
-
-public class GlobalExceptionHandler {
-
-}

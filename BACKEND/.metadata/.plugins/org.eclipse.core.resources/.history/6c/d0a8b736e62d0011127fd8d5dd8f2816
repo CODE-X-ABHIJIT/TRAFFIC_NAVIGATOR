@@ -1,5 +1,0 @@
-package com.tccs.config;
-
-public class WebSocketConfig {
-
-}
