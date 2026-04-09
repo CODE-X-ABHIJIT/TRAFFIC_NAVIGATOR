@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
@@ -73,7 +74,7 @@ public class AlertService {
                         "Alert not found: " + alertId));
 
         alert.setAcknowledged(true);
-        alert.setAcknowledgedAt(LocalDateTime.now());
+        alert.setAcknowledgedAt(OffsetDateTime.now());
         return alertRepository.save(alert);
     }
 
@@ -86,7 +87,7 @@ public class AlertService {
                 .findByAcknowledgedFalseOrderByCreatedAtDesc();
         for (Alert a : unacked) {
             a.setAcknowledged(true);
-            a.setAcknowledgedAt(LocalDateTime.now());
+            a.setAcknowledgedAt(OffsetDateTime .now());
         }
         alertRepository.saveAll(unacked);
         log.info("Acknowledged {} alerts", unacked.size());
