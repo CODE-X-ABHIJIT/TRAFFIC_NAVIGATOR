@@ -5,6 +5,8 @@ import com.tccs.model.enums.AlertType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "alerts")
@@ -37,13 +39,14 @@ public class Alert {
     private boolean acknowledged = false;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+private OffsetDateTime createdAt;
 
-    @Column(name = "acknowledged_at")
-    private LocalDateTime acknowledgedAt;
+@Column(name = "acknowledged_at")
+private OffsetDateTime acknowledgedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+@PrePersist
+protected void onCreate() {
+    createdAt = OffsetDateTime.now(ZoneId.of("Asia/Kolkata"));
+}
+
 }

@@ -9,6 +9,6 @@ export interface Alert {
   severity: AlertSeverity;
   message: string;
   acknowledged: boolean;
-  createdAt:Date;
+  createdAt: string;
   acknowledgedAt: string | null;
 }
