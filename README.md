@@ -296,7 +296,7 @@ This project is intended for educational and development purposes.
 
 GitHub: https://github.com/CODE-X-ABHIJIT
 
-LinkedIn: *(Add your LinkedIn profile here)*
+LinkedIn: *https://www.linkedin.com/in/abhijitsahu570*
 
 ---
 
