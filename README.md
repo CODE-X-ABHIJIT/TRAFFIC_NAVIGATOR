@@ -10,6 +10,7 @@ TRAFFIC_NAVIGATOR is a full-stack smart traffic management platform designed to 
 
 The application enables traffic operators to monitor junctions, manage traffic signals, track incidents, visualize congestion, receive alerts, and analyze traffic data through a centralized dashboard.
 
+Clik Here- https://traffic-navigator.onrender.com
 ---
 
 ## ✨ Features
